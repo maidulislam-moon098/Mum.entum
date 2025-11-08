@@ -9,6 +9,7 @@ import ProfileSummary from '../components/ProfileSummary.jsx';
 import CareInsights from '../components/CareInsights.jsx';
 import ActionItems from '../components/ActionItems.jsx';
 import ImportantNotifications from '../components/ImportantNotifications.jsx';
+import NotificationPermissionBanner from '../components/NotificationPermissionBanner.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const Dashboard = () => {
@@ -68,6 +69,8 @@ const Dashboard = () => {
     <div className="gradient-bg dashboard app-shell">
       <Navbar />
       <main style={{ padding: '40px 60px', maxWidth: '1400px', margin: '0 auto' }}>
+        <NotificationPermissionBanner />
+        
         <motion.section 
           initial={{ opacity: 0, y: 20 }} 
           animate={{ opacity: 1, y: 0 }} 

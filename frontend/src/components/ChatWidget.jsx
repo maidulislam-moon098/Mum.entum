@@ -1,14 +1,27 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 
-const ChatWidget = ({ profileSummary, userId }) => {
+const ChatWidget = ({ profileSummary, userId, initialPrompt }) => {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: 'Hey! How are you doing today?' }
   ]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const endRef = useRef(null);
+  const hasHandledPrompt = useRef(false);
+
+  // Handle initial prompt from notification
+  useEffect(() => {
+    if (initialPrompt && !hasHandledPrompt.current) {
+      hasHandledPrompt.current = true;
+      // Add the AI's question to the chat
+      setMessages([
+        { role: 'assistant', content: initialPrompt.question }
+      ]);
+      scrollToBottom();
+    }
+  }, [initialPrompt]);
 
   const scrollToBottom = () => {
     if (endRef.current) {

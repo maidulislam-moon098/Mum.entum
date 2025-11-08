@@ -155,6 +155,56 @@ create table if not exists public.daily_context (
   unique(user_id, date)
 );
 
+-- Chat messages for AI conversation history
+create table if not exists public.chat_messages (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  role text not null check (role in ('user', 'assistant')),
+  content text not null,
+  created_at timestamptz not null default timezone('utc'::text, now())
+);
+
+create index if not exists idx_chat_messages_user_id on public.chat_messages(user_id);
+create index if not exists idx_chat_messages_created_at on public.chat_messages(created_at desc);
+
+-- Push notification subscriptions
+create table if not exists public.push_subscriptions (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  subscription jsonb not null,
+  updated_at timestamptz not null default timezone('utc'::text, now())
+);
+
+-- Notification history
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  body text not null,
+  category text,
+  priority text default 'medium',
+  data jsonb,
+  sent_at timestamptz not null default timezone('utc'::text, now()),
+  read boolean not null default false,
+  read_at timestamptz
+);
+
+create index if not exists idx_notifications_user_id on public.notifications(user_id);
+create index if not exists idx_notifications_sent_at on public.notifications(sent_at desc);
+create index if not exists idx_notifications_read on public.notifications(read);
+
+-- Baby profiles for postpartum support
+create table if not exists public.baby_profiles (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  name text,
+  birth_date date,
+  age_months integer,
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  updated_at timestamptz not null default timezone('utc'::text, now())
+);
+
+create index if not exists idx_baby_profiles_user_id on public.baby_profiles(user_id);
+
 create or replace function public.touch_daily_context()
 returns trigger as $$
 begin

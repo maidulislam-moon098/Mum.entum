@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import Navbar from '../components/Navbar.jsx';
 import FullscreenLoader from '../components/FullscreenLoader.jsx';
@@ -11,9 +11,23 @@ import { useAuth } from '../context/AuthContext.jsx';
 const Assistant = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [profile, setProfile] = useState(null);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState('');
+  const [notificationPrompt, setNotificationPrompt] = useState(null);
+
+  // Check for notification prompt in URL
+  useEffect(() => {
+    const question = searchParams.get('question');
+    const promptId = searchParams.get('promptId');
+    
+    if (question && promptId) {
+      setNotificationPrompt({ question, promptId });
+      // Clean up URL
+      window.history.replaceState({}, '', '/assistant');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -86,7 +100,11 @@ const Assistant = () => {
         </motion.section>
         {error && <div className="alert" style={{ marginBottom: '20px' }}>{error}</div>}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <ChatWidget profileSummary={profile} userId={user?.id} />
+          <ChatWidget 
+            profileSummary={profile} 
+            userId={user?.id} 
+            initialPrompt={notificationPrompt}
+          />
         </div>
       </main>
     </div>

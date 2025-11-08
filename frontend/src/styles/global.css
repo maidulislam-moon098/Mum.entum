@@ -1396,6 +1396,67 @@ main {
   box-shadow: 0 30px 60px rgba(217, 100, 143, 0.2);
 }
 
+/* Notification Banner */
+.notification-banner {
+  background: linear-gradient(135deg, rgba(79, 179, 166, 0.1), rgba(79, 179, 166, 0.05));
+  border: 1px solid rgba(79, 179, 166, 0.2);
+  border-radius: 20px;
+  padding: 20px 28px;
+  margin-bottom: 32px;
+  box-shadow: 0 8px 24px rgba(79, 179, 166, 0.12);
+}
+
+.notification-banner__content {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.notification-banner__icon {
+  font-size: 2.5rem;
+  flex-shrink: 0;
+}
+
+.notification-banner__text {
+  flex: 1;
+}
+
+.notification-banner__title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--slate-700);
+  margin: 0 0 6px 0;
+}
+
+.notification-banner__description {
+  font-size: 0.95rem;
+  color: #6b5860;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.notification-banner__actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .notification-banner__content {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .notification-banner__actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .notification-banner__actions .button {
+    width: 100%;
+  }
+}
+
 @media (max-width: 768px) {
   .hero__actions,
   .question-card__actions,
