@@ -5,6 +5,8 @@ import dotenv from 'dotenv';
 import onboardingRouter from './routes/onboardingRoutes.js';
 import dashboardRouter from './routes/dashboardRoutes.js';
 import chatRouter from './routes/chatRoutes.js';
+import actionItemsRouter from './routes/actionItemsRoutes.js';
+import profileRouter from './routes/profileRoutes.js';
 
 dotenv.config();
 
@@ -19,6 +21,8 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/onboarding', onboardingRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/chat', chatRouter);
+app.use('/api/action-items', actionItemsRouter);
+app.use('/api/profile', profileRouter);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

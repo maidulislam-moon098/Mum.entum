@@ -14,28 +14,45 @@ const Profile = () => {
   const [profile, setProfile] = useState(null);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  const fetchProfile = async () => {
+    if (!user) return;
+    setFetching(true);
+    setError('');
+    try {
+      const { data } = await axios.get('/api/dashboard', {
+        params: { userId: user.id }
+      });
+      if (data.onboardingRequired) {
+        navigate('/onboarding', { replace: true });
+        return;
+      }
+      setProfile(data.profileSummary);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Unable to load your profile details.');
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  const handleSave = async (updates) => {
+    try {
+      setError('');
+      setSuccessMessage('');
+      const { data } = await axios.post('/api/profile/update', {
+        userId: user.id,
+        updates
+      });
+      setProfile(data.profile);
+      setSuccessMessage('Profile updated successfully! ✨');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update profile.');
+    }
+  };
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (!user) return;
-      setFetching(true);
-      setError('');
-      try {
-        const { data } = await axios.get('/api/dashboard', {
-          params: { userId: user.id }
-        });
-        if (data.onboardingRequired) {
-          navigate('/onboarding', { replace: true });
-          return;
-        }
-        setProfile(data.profileSummary);
-      } catch (err) {
-        setError(err.response?.data?.error || 'Unable to load your profile details.');
-      } finally {
-        setFetching(false);
-      }
-    };
-
     if (user && !loading) {
       fetchProfile();
     }
@@ -48,15 +65,21 @@ const Profile = () => {
   return (
     <div className="gradient-bg profile-page app-shell">
       <Navbar />
-      <main>
-        <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="profile-page__hero">
-          <div>
-            <h1>Your profile, all in one place</h1>
-            <p>Review the details guiding your personalised journey and update anything that needs a refresh.</p>
-          </div>
+      <main style={{ padding: '40px 60px', maxWidth: '1000px', margin: '0 auto' }}>
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ duration: 0.5 }}
+          style={{ marginBottom: '40px' }}
+        >
+          <h1 style={{ marginBottom: '12px' }}>Your profile, all in one place</h1>
+          <p style={{ color: '#8b7a80', fontSize: '1.1rem' }}>
+            Review the details guiding your personalised journey and update anything that needs a refresh.
+          </p>
         </motion.section>
-        {error && <div className="alert">{error}</div>}
-        <ProfileDetails profile={profile} />
+        {error && <div className="alert alert-error" style={{ marginBottom: '20px' }}>{error}</div>}
+        {successMessage && <div className="alert alert-success" style={{ marginBottom: '20px' }}>{successMessage}</div>}
+        <ProfileDetails profile={profile} onSave={handleSave} />
       </main>
     </div>
   );

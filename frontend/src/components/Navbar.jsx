@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../context/AuthContext.jsx';
@@ -8,9 +8,10 @@ const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [collapsed, setCollapsed] = useState(false);
   const authEnabled = Boolean(supabase);
   const brandHref = user ? '/dashboard' : '/';
-  const appRoutes = ['/dashboard', '/profile', '/assistant', '/onboarding'];
+  const appRoutes = ['/dashboard', '/baby', '/profile', '/assistant', '/progress', '/onboarding'];
   const isAppView = user && appRoutes.some((path) => location.pathname.startsWith(path));
 
   const handleSignOut = async () => {
@@ -21,25 +22,72 @@ const Navbar = () => {
 
   if (isAppView) {
     return (
-      <aside className="sidebar">
-        <Link className="sidebar__brand" to={brandHref}>
-          <span className="sidebar__mark">🌸</span>
-          <span>Mum.entum</span>
-        </Link>
+      <aside className={`sidebar ${collapsed ? 'sidebar--collapsed' : ''}`}>
+        <div className="sidebar__header">
+          <Link className="sidebar__brand" to={brandHref} aria-label="Mum.entum home">
+            <span className="sidebar__mark">🌸</span>
+            <span className="sidebar__brand-text">Mum.entum</span>
+          </Link>
+          <button
+            className="sidebar__toggle"
+            type="button"
+            onClick={() => setCollapsed(!collapsed)}
+            aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+          >
+            {collapsed ? '>' : '<'}
+          </button>
+        </div>
         <nav className="sidebar__nav">
-          <Link to="/dashboard" className={location.pathname === '/dashboard' ? 'active' : ''}>
-            Dashboard
+          <Link
+            to="/dashboard"
+            className={location.pathname === '/dashboard' ? 'active' : ''}
+            aria-label="Dashboard"
+            data-abbrev="D"
+          >
+            <span className="sidebar__nav-label">Dashboard</span>
           </Link>
-          <Link to="/profile" className={location.pathname === '/profile' ? 'active' : ''}>
-            Profile
+          <Link
+            to="/baby"
+            className={location.pathname === '/baby' ? 'active' : ''}
+            aria-label="Baby Insights"
+            data-abbrev="B"
+          >
+            <span className="sidebar__nav-label">Baby Insights</span>
           </Link>
-          <Link to="/assistant" className={location.pathname === '/assistant' ? 'active' : ''}>
-            Mum.entum AI
+          <Link
+            to="/progress"
+            className={location.pathname === '/progress' ? 'active' : ''}
+            aria-label="Progress"
+            data-abbrev="Pg"
+          >
+            <span className="sidebar__nav-label">Progress</span>
+          </Link>
+          <Link
+            to="/profile"
+            className={location.pathname === '/profile' ? 'active' : ''}
+            aria-label="Profile"
+            data-abbrev="Pr"
+          >
+            <span className="sidebar__nav-label">Profile</span>
+          </Link>
+          <Link
+            to="/assistant"
+            className={location.pathname === '/assistant' ? 'active' : ''}
+            aria-label="Mum.entum AI"
+            data-abbrev="AI"
+          >
+            <span className="sidebar__nav-label">Mum.entum AI</span>
           </Link>
         </nav>
         <div className="sidebar__footer">
-          <button type="button" className="button button--ghost" onClick={handleSignOut} disabled={!authEnabled}>
-            Sign out
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={handleSignOut}
+            disabled={!authEnabled}
+            aria-label="Sign out"
+          >
+            <span className="sidebar__footer-text">Sign out</span>
           </button>
         </div>
       </aside>

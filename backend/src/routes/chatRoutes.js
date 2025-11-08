@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { chatWithAssistant } from '../controllers/chatController.js';
+import { chat } from '../controllers/chatController.js';
 
 const router = Router();
 
-router.post('/', chatWithAssistant);
+router.post('/', chat);
 
 export default router;

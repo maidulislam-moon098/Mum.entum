@@ -7,6 +7,8 @@ import LandingPage from './pages/Landing.jsx';
 import AuthPage from './pages/Auth.jsx';
 import OnboardingFlow from './pages/Onboarding.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import BabyInsights from './pages/BabyInsights.jsx';
+import Progress from './pages/Progress.jsx';
 import Profile from './pages/Profile.jsx';
 import Assistant from './pages/Assistant.jsx';
 import FullscreenLoader from './components/FullscreenLoader.jsx';
@@ -81,6 +83,22 @@ const App = () => {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/baby"
+          element={
+            <ProtectedRoute>
+              <BabyInsights />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/progress"
+          element={
+            <ProtectedRoute>
+              <Progress />
             </ProtectedRoute>
           }
         />

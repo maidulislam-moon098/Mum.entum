@@ -123,9 +123,13 @@ create table if not exists public.action_items (
   user_id uuid not null references auth.users(id) on delete cascade,
   title text not null,
   is_completed boolean not null default false,
+  category text default 'general',
   due_on date,
   created_at timestamptz not null default timezone('utc'::text, now())
 );
+
+alter table if exists public.action_items
+  add column if not exists category text default 'general';
 
 create table if not exists public.important_notifications (
   id uuid primary key default gen_random_uuid(),
@@ -136,6 +140,32 @@ create table if not exists public.important_notifications (
   created_at timestamptz not null default timezone('utc'::text, now()),
   acknowledged boolean not null default false
 );
+
+-- Daily context tracking for AI-driven adaptations
+create table if not exists public.daily_context (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  date date not null default current_date,
+  health_signals jsonb default '[]'::jsonb,
+  mood_signals jsonb default '[]'::jsonb,
+  last_chat_summary text,
+  adaptation_flags jsonb default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  updated_at timestamptz not null default timezone('utc'::text, now()),
+  unique(user_id, date)
+);
+
+create or replace function public.touch_daily_context()
+returns trigger as $$
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger trg_touch_daily_context
+before update on public.daily_context
+for each row execute procedure public.touch_daily_context();
 
 create or replace function public.touch_onboarding_responses()
 returns trigger as $$

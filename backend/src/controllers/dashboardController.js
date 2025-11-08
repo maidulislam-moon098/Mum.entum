@@ -1,4 +1,11 @@
 import { supabaseAdmin } from '../config/supabaseClient.js';
+import { 
+  generateNutritionSuggestions, 
+  generateLifestyleSuggestions,
+  generateDailyMealPlan,
+  generateAdaptedLifestyle,
+  generateMoodSummary
+} from '../services/aiService.js';
 
 const regionPlaybook = {
   india: {
@@ -33,20 +40,63 @@ const parseList = (value) => {
 };
 
 const hasCompletedOnboarding = async (userId) => {
-  const [{ data: requiredQuestions, error: questionsError }, { data: responses, error: responsesError }] =
-    await Promise.all([
-      supabaseAdmin.from('onboarding_questions').select('id').eq('is_required', true),
-      supabaseAdmin.from('onboarding_responses').select('question_id, status').eq('user_id', userId)
-    ]);
+  const [{ data: questions, error: questionsError }, { data: responses, error: responsesError }] = await Promise.all([
+    supabaseAdmin
+      .from('onboarding_questions')
+      .select('id, slug, is_required, depends_on_slug, depends_on_values'),
+    supabaseAdmin
+      .from('onboarding_responses')
+      .select('question_id, status, response_payload')
+      .eq('user_id', userId)
+  ]);
 
   if (questionsError) throw questionsError;
   if (responsesError) throw responsesError;
 
-  const requiredIds = (requiredQuestions || []).map((row) => row.id);
-  if (requiredIds.length === 0) return true;
+  const questionList = questions || [];
+  const responseList = responses || [];
 
-  const answered = new Set((responses || []).filter((row) => row.status === 'answered').map((row) => row.question_id));
-  return requiredIds.every((id) => answered.has(id));
+  if (!questionList.some((question) => question.is_required)) {
+    return true;
+  }
+
+  const questionBySlug = new Map(questionList.map((question) => [question.slug, question]));
+  const responseByQuestionId = new Map(responseList.map((response) => [response.question_id, response]));
+
+  const dependencySatisfied = (question) => {
+    if (!question.depends_on_slug) return true;
+    const dependencyQuestion = questionBySlug.get(question.depends_on_slug);
+    if (!dependencyQuestion) return true;
+    const dependencyResponse = responseByQuestionId.get(dependencyQuestion.id);
+    if (!dependencyResponse || dependencyResponse.status !== 'answered') return false;
+
+    const allowedValuesRaw = question.depends_on_values;
+    const allowedValues = Array.isArray(allowedValuesRaw)
+      ? allowedValuesRaw
+      : allowedValuesRaw
+      ? [allowedValuesRaw]
+      : [];
+    if (!allowedValues || allowedValues.length === 0) return true;
+
+    const rawValue = dependencyResponse.response_payload;
+    if (Array.isArray(rawValue)) {
+      return rawValue.some((value) => allowedValues.includes(String(value)));
+    }
+
+    if (rawValue === null || rawValue === undefined) {
+      return false;
+    }
+
+    return allowedValues.includes(String(rawValue));
+  };
+
+  return questionList
+    .filter((question) => question.is_required)
+    .filter(dependencySatisfied)
+    .every((question) => {
+      const response = responseByQuestionId.get(question.id);
+      return response && response.status === 'answered';
+    });
 };
 
 const determineRegionKey = (rawRegion) => {
@@ -328,11 +378,76 @@ export const getDashboard = async (req, res, next) => {
     }
 
     const profile = profileResult.data || null;
-  const metrics = (metricsResult.data || []).length ? metricsResult.data : buildWeeklyMetrics(profile);
-  const actionItems = (actionsResult.data || []).length ? actionsResult.data : buildActionItems(profile);
+    const metrics = (metricsResult.data || []).length ? metricsResult.data : buildWeeklyMetrics(profile);
+    const actionItems = (actionsResult.data || []).length ? actionsResult.data : buildActionItems(profile);
     const notifications = (notificationsResult.data || []).length
       ? notificationsResult.data
       : buildFallbackNotifications(profile);
+
+    // Get today's context to adapt suggestions
+    const today = new Date().toISOString().split('T')[0];
+    const { data: dailyContext } = await supabaseAdmin
+      .from('daily_context')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('date', today)
+      .single();
+
+    const contextForAI = dailyContext ? {
+      health_signals: dailyContext.health_signals || [],
+      mood_signals: dailyContext.mood_signals || [],
+      adaptation_flags: dailyContext.adaptation_flags || {}
+    } : null;
+
+    // Generate AI-powered daily meal plan and lifestyle suggestions
+    let nutritionSuggestions = [];
+    let lifestyleSuggestions = [];
+    let moodSummary = null;
+    
+    if (profile) {
+      try {
+        const [mealPlan, lifestyleTips, mood] = await Promise.all([
+          generateDailyMealPlan(profile, contextForAI),
+          generateAdaptedLifestyle(profile, contextForAI),
+          generateMoodSummary(profile, contextForAI)
+        ]);
+        
+        moodSummary = mood;
+        
+        nutritionSuggestions = mealPlan && mealPlan.length > 0 
+          ? mealPlan.map(meal => ({
+              category: meal.meal.charAt(0).toUpperCase() + meal.meal.slice(1),
+              title: meal.dish,
+              summary: meal.benefit
+            }))
+          : buildNutritionSuggestions(profile);
+          
+        lifestyleSuggestions = lifestyleTips && lifestyleTips.length > 0
+          ? lifestyleTips.map(tip => ({
+              category: tip.category,
+              title: tip.category,
+              summary: tip.tip
+            }))
+          : buildLifestyleSuggestions(profile);
+      } catch (aiError) {
+        console.error('AI generation failed, using fallback:', aiError);
+        nutritionSuggestions = buildNutritionSuggestions(profile);
+        lifestyleSuggestions = buildLifestyleSuggestions(profile);
+        moodSummary = {
+          emoji: '🌸',
+          summary: 'Your pregnancy journey is unfolding beautifully. Keep nurturing yourself and baby.',
+          needsAttention: false
+        };
+      }
+    } else {
+      nutritionSuggestions = buildNutritionSuggestions(profile);
+      lifestyleSuggestions = buildLifestyleSuggestions(profile);
+      moodSummary = {
+        emoji: '✨',
+        summary: 'Complete onboarding to unlock your personalized journey insights.',
+        needsAttention: false
+      };
+    }
 
     const responsePayload = {
       profileSummary: profile,
@@ -340,8 +455,9 @@ export const getDashboard = async (req, res, next) => {
       careInsights: [],
       actionItems,
       importantNotifications: notifications,
-      nutritionSuggestions: buildNutritionSuggestions(profile),
-      lifestyleSuggestions: buildLifestyleSuggestions(profile)
+      nutritionSuggestions,
+      lifestyleSuggestions,
+      moodSummary
     };
 
     res.json(responsePayload);

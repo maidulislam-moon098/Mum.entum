@@ -48,15 +48,46 @@ const Assistant = () => {
   return (
     <div className="gradient-bg assistant-page app-shell">
       <Navbar />
-      <main>
-        <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="assistant-page__hero">
-          <div>
-            <h1>Mum.entum AI</h1>
-            <p>Ask anything—from lifestyle tweaks to appointment prep—and we will respond with gentle, evidence-informed guidance.</p>
-          </div>
+      <main style={{ 
+        padding: '60px 80px', 
+        maxWidth: '1200px', 
+        margin: '0 auto',
+        display: 'flex',
+        flexDirection: 'column',
+        height: 'calc(100vh - 120px)'
+      }}>
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          transition={{ duration: 0.5 }}
+          style={{ 
+            textAlign: 'center', 
+            marginBottom: '40px'
+          }}
+        >
+          <h1 style={{ 
+            fontSize: '3rem', 
+            marginBottom: '16px',
+            background: 'linear-gradient(135deg, #f084ae, #d9648f)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            fontWeight: '700'
+          }}>
+            Mum.entum AI
+          </h1>
+          <p style={{ 
+            color: '#8b7a80', 
+            fontSize: '1.15rem',
+            maxWidth: '700px',
+            margin: '0 auto'
+          }}>
+            Ask anything—from lifestyle tweaks to appointment prep—and we will respond with gentle, evidence-informed guidance.
+          </p>
         </motion.section>
-        {error && <div className="alert">{error}</div>}
-        <ChatWidget profileSummary={profile} />
+        {error && <div className="alert" style={{ marginBottom: '20px' }}>{error}</div>}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <ChatWidget profileSummary={profile} userId={user?.id} />
+        </div>
       </main>
     </div>
   );
