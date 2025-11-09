@@ -8,6 +8,9 @@ import chatRouter from './routes/chatRoutes.js';
 import actionItemsRouter from './routes/actionItemsRoutes.js';
 import profileRouter from './routes/profileRoutes.js';
 import notificationRouter from './routes/notificationRoutes.js';
+import healthTrackingRouter from './routes/healthTrackingRoutes.js';
+import treatmentRouter from './routes/treatmentRoutes.js';
+import insightsRouter from './routes/insightsRoutes.js';
 
 dotenv.config();
 
@@ -29,6 +32,9 @@ app.use('/api/chat', chatRouter);
 app.use('/api/action-items', actionItemsRouter);
 app.use('/api/profile', profileRouter);
 app.use('/api/notifications', notificationRouter);
+app.use('/api/health-tracking', healthTrackingRouter);
+app.use('/api/treatment-recommendations', treatmentRouter);
+app.use('/api/insights', insightsRouter);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

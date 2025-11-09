@@ -110,9 +110,12 @@ const OnboardingFlow = () => {
 
   if (completed) {
     return (
-      <div className="gradient-bg onboarding-complete">
-        <Navbar />
-        <main>
+      <div className="gradient-bg onboarding-minimal">
+        <div className="onboarding-minimal__logo">
+          <span className="onboarding-minimal__mark">🌸</span>
+          <span className="onboarding-minimal__brand">Mum.entum</span>
+        </div>
+        <main className="onboarding-minimal__content">
           <motion.section
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
@@ -132,13 +135,22 @@ const OnboardingFlow = () => {
   }
 
   return (
-    <div className="gradient-bg onboarding app-shell">
-      <Navbar />
-      <main>
-        <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <h1>Tell us about you</h1>
-          <p>These questions help us tailor recommendations, alerts, and resources that feel just right.</p>
-          {error && <div className="alert">{error}</div>}
+    <div className="gradient-bg onboarding-minimal">
+      {/* Logo only at top */}
+      <div className="onboarding-minimal__logo">
+        <span className="onboarding-minimal__mark">🌸</span>
+        <span className="onboarding-minimal__brand">Mum.entum</span>
+      </div>
+
+      <main className="onboarding-minimal__content">
+        <motion.section 
+          key={question?.id}
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.5 }}
+        >
+          {error && <div className="alert" style={{ marginBottom: '20px' }}>{error}</div>}
           {question && (
             <QuestionCard
               question={question}

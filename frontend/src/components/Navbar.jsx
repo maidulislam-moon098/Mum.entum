@@ -3,15 +3,15 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../context/AuthContext.jsx';
 import { supabase } from '../lib/supabaseClient.js';
+import Logo from './Logo.jsx';
 
 const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [collapsed, setCollapsed] = useState(false);
   const authEnabled = Boolean(supabase);
   const brandHref = user ? '/dashboard' : '/';
-  const appRoutes = ['/dashboard', '/baby', '/profile', '/assistant', '/progress', '/onboarding'];
+  const appRoutes = ['/dashboard', '/baby', '/profile', '/assistant', '/progress', '/insights', '/onboarding'];
   const isAppView = user && appRoutes.some((path) => location.pathname.startsWith(path));
 
   const handleSignOut = async () => {
@@ -22,20 +22,11 @@ const Navbar = () => {
 
   if (isAppView) {
     return (
-      <aside className={`sidebar ${collapsed ? 'sidebar--collapsed' : ''}`}>
+      <aside className="sidebar">
         <div className="sidebar__header">
           <Link className="sidebar__brand" to={brandHref} aria-label="Mum.entum home">
-            <span className="sidebar__mark">🌸</span>
-            <span className="sidebar__brand-text">Mum.entum</span>
+            <Logo height="40px" />
           </Link>
-          <button
-            className="sidebar__toggle"
-            type="button"
-            onClick={() => setCollapsed(!collapsed)}
-            aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
-          >
-            {collapsed ? '>' : '<'}
-          </button>
         </div>
         <nav className="sidebar__nav">
           <Link
@@ -61,6 +52,14 @@ const Navbar = () => {
             data-abbrev="Pg"
           >
             <span className="sidebar__nav-label">Progress</span>
+          </Link>
+          <Link
+            to="/insights"
+            className={location.pathname === '/insights' ? 'active' : ''}
+            aria-label="Insights"
+            data-abbrev="In"
+          >
+            <span className="sidebar__nav-label">Insights</span>
           </Link>
           <Link
             to="/profile"
@@ -97,8 +96,7 @@ const Navbar = () => {
   return (
     <header className="navbar">
       <Link className="navbar__brand" to={brandHref}>
-        <span className="navbar__mark">🌸</span>
-        <span>Mum.entum</span>
+        <Logo height="32px" />
       </Link>
       <nav className="navbar__nav">
         {user && (

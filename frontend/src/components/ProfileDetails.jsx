@@ -196,6 +196,20 @@ const ProfileDetails = ({ profile, onSave }) => {
       rows: [
         { label: 'Next appointment', field: 'next_appointment', value: profile.next_appointment, type: 'date' }
       ]
+    },
+    {
+      title: 'Emergency Contact',
+      description: 'Critical contact information for urgent situations.',
+      rows: [
+        { 
+          label: 'Emergency contact', 
+          field: 'emergency_contact', 
+          value: profile.emergency_contact 
+            ? `${profile.emergency_contact.phone || 'No phone'} (${profile.emergency_contact.relation || 'No relation specified'})`
+            : 'Not provided yet'
+        },
+        { label: 'Blood group', field: 'blood_group', value: profile.blood_group }
+      ]
     }
   ];
 

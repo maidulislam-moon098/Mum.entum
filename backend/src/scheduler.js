@@ -11,6 +11,7 @@ import { scheduleSmartCheckIns, sendPushNotification } from '../services/notific
 cron.schedule('0 9 * * *', async () => {
   console.log('🌅 Running morning check-ins...');
   await sendCheckInsToActiveUsers('morning');
+  await sendDailyHealthReminders();
 });
 
 // Afternoon check-in at 2:00 PM every day
@@ -159,8 +160,66 @@ async function sendWeeklyWellnessCheck() {
 console.log('📅 Notification scheduler initialized');
 console.log('⏰ Scheduled jobs:');
 console.log('  - Morning check-ins: 9:00 AM daily');
+console.log('  - Daily health tracking: 9:00 AM daily');
 console.log('  - Afternoon check-ins: 2:00 PM daily');
 console.log('  - Evening check-ins: 8:00 PM daily');
 console.log('  - Weekly wellness: 10:00 AM Sundays');
 
-export { sendCheckInsToActiveUsers, sendWeeklyWellnessCheck };
+/**
+ * Send daily health tracking reminders
+ */
+async function sendDailyHealthReminders() {
+  try {
+    const { data: subscriptions, error } = await supabase
+      .from('push_subscriptions')
+      .select('user_id');
+
+    if (error) {
+      console.error('Error fetching subscriptions:', error);
+      return;
+    }
+
+    for (const { user_id } of subscriptions) {
+      try {
+        // Check if user has already logged health data today
+        const today = new Date().toISOString().split('T')[0];
+        const { data: todayData } = await supabase
+          .from('health_tracking')
+          .select('id')
+          .eq('user_id', user_id)
+          .eq('date', today)
+          .maybeSingle();
+
+        if (todayData) {
+          console.log(`User ${user_id} already logged health data today`);
+          continue;
+        }
+
+        // Send reminder notification
+        const notification = {
+          title: '📊 Daily Health Check',
+          body: 'Take a moment to log your blood pressure, weight, and how you\'re feeling today.',
+          category: 'health_tracking',
+          priority: 'high',
+          data: {
+            url: '/dashboard',
+            action: 'health_check'
+          }
+        };
+
+        await sendPushNotification(user_id, notification);
+        console.log(`✅ Sent health reminder to user ${user_id}`);
+        
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (err) {
+        console.error(`Error sending health reminder to user ${user_id}:`, err);
+      }
+    }
+
+    console.log('✅ Completed daily health reminders');
+  } catch (error) {
+    console.error('Error in sendDailyHealthReminders:', error);
+  }
+}
+
+export { sendCheckInsToActiveUsers, sendWeeklyWellnessCheck, sendDailyHealthReminders };

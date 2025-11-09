@@ -11,6 +11,7 @@ import BabyInsights from './pages/BabyInsights.jsx';
 import Progress from './pages/Progress.jsx';
 import Profile from './pages/Profile.jsx';
 import Assistant from './pages/Assistant.jsx';
+import Insights from './pages/Insights.jsx';
 import FullscreenLoader from './components/FullscreenLoader.jsx';
 
 const ProtectedRoute = ({ children, redirectTo = '/auth' }) => {
@@ -115,6 +116,14 @@ const App = () => {
           element={
             <ProtectedRoute>
               <Assistant />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/insights"
+          element={
+            <ProtectedRoute>
+              <Insights />
             </ProtectedRoute>
           }
         />

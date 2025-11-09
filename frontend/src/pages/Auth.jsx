@@ -10,7 +10,7 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [mode, setMode] = useState('login');
-  const [form, setForm] = useState({ email: '', password: '', fullName: '' });
+  const [form, setForm] = useState({ email: '', password: '', confirmPassword: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -40,12 +40,14 @@ const AuthPage = () => {
         if (signInError) throw signInError;
         navigate('/dashboard');
       } else {
+        // Validate password confirmation
+        if (form.password !== form.confirmPassword) {
+          throw new Error('Passwords do not match');
+        }
+        
         const { error: signUpError } = await supabase.auth.signUp({
           email: form.email,
-          password: form.password,
-          options: {
-            data: { full_name: form.fullName }
-          }
+          password: form.password
         });
         if (signUpError) throw signUpError;
         setNotice('Check your email to confirm your account. After verification you can continue onboarding.');
@@ -97,12 +99,33 @@ const AuthPage = () => {
       <main>
         <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="auth-card">
           <div className="auth-card__toggle">
-            <button className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')} type="button" disabled={!authEnabled}>
+            <button 
+              className={mode === 'login' ? 'active' : ''} 
+              onClick={() => setMode('login')} 
+              type="button" 
+              disabled={!authEnabled}
+            >
               Existing user
             </button>
-            <button className={mode === 'signup' ? 'active' : ''} onClick={() => setMode('signup')} type="button" disabled={!authEnabled}>
+            <button 
+              className={mode === 'signup' ? 'active' : ''} 
+              onClick={() => setMode('signup')} 
+              type="button" 
+              disabled={!authEnabled}
+            >
               New to Mum.entum
             </button>
+            <motion.div 
+              className="auth-card__toggle-indicator"
+              animate={{ 
+                x: mode === 'login' ? '0%' : '100%'
+              }}
+              transition={{ 
+                type: 'spring', 
+                stiffness: 300, 
+                damping: 30 
+              }}
+            />
           </div>
           {!authEnabled && (
             <div className="notice">
@@ -118,19 +141,6 @@ const AuthPage = () => {
           {error && <div className="alert">{error}</div>}
           {notice && <div className="notice">{notice}</div>}
           <form onSubmit={handleAuth} className="auth-form">
-            {mode === 'signup' && (
-              <label>
-                Full name
-                <input
-                  required
-                  name="fullName"
-                  type="text"
-                  placeholder="Rosie Bloom"
-                  value={form.fullName}
-                  onChange={handleChange}
-                />
-              </label>
-            )}
             <label>
               Email
               <input
@@ -149,11 +159,25 @@ const AuthPage = () => {
                 name="password"
                 type="password"
                 minLength={6}
-                placeholder="Create a secure password"
+                placeholder={mode === 'login' ? 'Enter your password' : 'Create a secure password'}
                 value={form.password}
                 onChange={handleChange}
               />
             </label>
+            {mode === 'signup' && (
+              <label>
+                Confirm Password
+                <input
+                  required
+                  name="confirmPassword"
+                  type="password"
+                  minLength={6}
+                  placeholder="Confirm your password"
+                  value={form.confirmPassword}
+                  onChange={handleChange}
+                />
+              </label>
+            )}
             <button type="submit" className="button button--primary" disabled={loading || !authEnabled}>
               {loading ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Sign up'}
             </button>

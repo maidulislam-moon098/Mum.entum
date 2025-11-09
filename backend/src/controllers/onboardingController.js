@@ -77,6 +77,21 @@ const buildProfileUpdates = (slug, response) => {
       return { complications: trimmed || null };
     case 'conception-window':
       return { planning_window: trimmed || null };
+    case 'pregnancy-feeling':
+      return { emotional_state: trimmed || null };
+    case 'folic-acid':
+      return { folic_acid: trimmed || null };
+    case 'due-date-known':
+      // Handle structured due date data
+      if (typeof response === 'object' && response !== null) {
+        const { choice, date } = response;
+        const updates = { due_date_known: choice };
+        if (date) {
+          updates.due_date = date;
+        }
+        return updates;
+      }
+      return { due_date_known: trimmed || null };
     case 'medical-conditions': {
       const selections = toArray(response)
         .map((entry) => (typeof entry === 'string' ? entry.trim() : entry))
@@ -103,10 +118,26 @@ const buildProfileUpdates = (slug, response) => {
 
       return { medical_conditions: unique.length ? unique : null };
     }
-    case 'current-meds':
+    case 'current-meds': {
+      // Handle medications as an array
+      if (Array.isArray(answer)) {
+        const cleaned = answer
+          .map(med => med?.trim())
+          .filter(med => med && med !== '');
+        return { medications: cleaned.length > 0 ? cleaned : null };
+      }
       return { medications: trimmed || null };
-    case 'allergies':
+    }
+    case 'allergies': {
+      // Handle allergies as an array
+      if (Array.isArray(answer)) {
+        const cleaned = answer
+          .map(allergy => allergy?.trim())
+          .filter(allergy => allergy && allergy !== '');
+        return { allergies: cleaned.length > 0 ? cleaned : null };
+      }
       return { allergies: trimmed || null };
+    }
     case 'diet-style':
       return { diet_style: trimmed || null };
     case 'food-preferences':
@@ -128,6 +159,19 @@ const buildProfileUpdates = (slug, response) => {
     case 'next-appointment':
       return { next_appointment: trimmed || null };
     case 'emergency-contact':
+      // Handle structured emergency contact data (number and relation)
+      if (typeof response === 'object' && response !== null) {
+        const { number, relation } = response;
+        if (number || relation) {
+          return {
+            emergency_contact: {
+              phone: number?.trim() || null,
+              relation: relation?.trim() || null
+            }
+          };
+        }
+      }
+      // Fallback for legacy text format
       return {
         emergency_contact: trimmed ? { raw: trimmed } : null
       };

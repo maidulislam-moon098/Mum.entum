@@ -63,8 +63,8 @@ create table if not exists public.pregnancy_profiles (
   is_first_pregnancy boolean,
   complications text,
   medical_conditions text[],
-  medications text,
-  allergies text,
+  medications text[],
+  allergies text[],
   diet_style text,
   food_preferences text,
   activity_level text,
@@ -74,6 +74,8 @@ create table if not exists public.pregnancy_profiles (
   next_appointment date,
   emergency_contact jsonb,
   blood_group text,
+  folic_acid text,
+  due_date_known text,
   notes text,
   updated_at timestamptz not null default timezone('utc'::text, now())
 );
@@ -87,8 +89,8 @@ alter table if exists public.pregnancy_profiles
   add column if not exists is_first_pregnancy boolean,
   add column if not exists complications text,
   add column if not exists medical_conditions text[],
-  add column if not exists medications text,
-  add column if not exists allergies text,
+  add column if not exists medications text[],
+  add column if not exists allergies text[],
   add column if not exists diet_style text,
   add column if not exists food_preferences text,
   add column if not exists activity_level text,
@@ -97,7 +99,9 @@ alter table if exists public.pregnancy_profiles
   add column if not exists has_doctor boolean,
   add column if not exists next_appointment date,
   add column if not exists emergency_contact jsonb,
-  add column if not exists blood_group text;
+  add column if not exists blood_group text,
+  add column if not exists folic_acid text,
+  add column if not exists due_date_known text;
 
 create table if not exists public.baby_health_metrics (
   id uuid primary key default gen_random_uuid(),
@@ -205,6 +209,63 @@ create table if not exists public.baby_profiles (
 
 create index if not exists idx_baby_profiles_user_id on public.baby_profiles(user_id);
 
+-- Daily health tracking (blood pressure, weight, symptoms)
+create table if not exists public.health_tracking (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  date date not null default current_date,
+  blood_pressure_systolic integer,
+  blood_pressure_diastolic integer,
+  weight_kg decimal(5,2),
+  symptoms text[],
+  symptom_notes text,
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  updated_at timestamptz not null default timezone('utc'::text, now()),
+  unique(user_id, date)
+);
+
+create index if not exists idx_health_tracking_user_id on public.health_tracking(user_id);
+create index if not exists idx_health_tracking_date on public.health_tracking(date desc);
+
+-- Treatment recommendations from AI
+create table if not exists public.treatment_recommendations (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  description text not null,
+  risk_level text not null default 'low',
+  category text not null,
+  recommended_actions text[],
+  sent_via_notification boolean not null default false,
+  acknowledged boolean not null default false,
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  expires_at timestamptz
+);
+
+create index if not exists idx_treatment_recommendations_user_id on public.treatment_recommendations(user_id);
+create index if not exists idx_treatment_recommendations_created_at on public.treatment_recommendations(created_at desc);
+create index if not exists idx_treatment_recommendations_risk_level on public.treatment_recommendations(risk_level);
+
+-- Insights articles for postpartum support
+create table if not exists public.insights_articles (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  category text not null,
+  title text not null,
+  summary text not null,
+  content text not null,
+  tags text[],
+  is_personalized boolean not null default false,
+  stage text not null default 'pregnancy',
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  updated_at timestamptz not null default timezone('utc'::text, now())
+);
+
+create index if not exists idx_insights_articles_user_id on public.insights_articles(user_id);
+create index if not exists idx_insights_articles_category on public.insights_articles(category);
+create index if not exists idx_insights_articles_stage on public.insights_articles(stage);
+create index if not exists idx_insights_articles_created_at on public.insights_articles(created_at desc);
+
 create or replace function public.touch_daily_context()
 returns trigger as $$
 begin
@@ -235,23 +296,26 @@ values
   ('mama-name', 'Basic Personal Information', 'What is your name?', 'We will use this to greet you in every note.', 'text', null, true, false, null, null, 1),
   ('mama-age', 'Basic Personal Information', 'What is your age?', 'Age helps us align guidance and risk checks.', 'text', null, true, true, null, null, 2),
   ('mama-region', 'Basic Personal Information', 'What country or region are you from?', 'We adapt cultural and medical guidance to your location.', 'text', null, true, true, null, null, 3),
-  ('pregnancy-status', 'Pregnancy Status', 'Are you currently pregnant or planning to get pregnant soon?', 'Choose what fits right now so timing stays on point.', 'single_select', '{Currently pregnant,Planning soon}', true, false, null, null, 4),
-  ('pregnancy-weeks', 'Pregnancy Status', 'How many weeks pregnant are you?', 'We will sync week-by-week updates to this number.', 'text', null, true, false, 'pregnancy-status', '{Currently pregnant}', 5),
-  ('first-pregnancy', 'Pregnancy Status', 'Is this your first pregnancy?', 'This lets us tailor support for first-time or experienced mums.', 'single_select', '{Yes,No}', true, false, 'pregnancy-status', '{Currently pregnant}', 6),
-  ('pregnancy-complications', 'Pregnancy Status', 'Have you had any complications in this or previous pregnancies?', 'Share anything your care team is watching closely.', 'text', null, false, true, 'pregnancy-status', '{Currently pregnant}', 7),
-  ('conception-window', 'Pregnancy Status', 'When are you hoping to conceive?', 'We will time prep tips around your window.', 'text', null, true, false, 'pregnancy-status', '{Planning soon}', 8),
-  ('medical-conditions', 'Medical Background', 'Do you have any pre-existing medical conditions?', 'Think diabetes, hypertension, thyroid or anything else important.', 'multi_select', '{None,Diabetes,Hypertension,Thyroid,PCOS,Autoimmune condition,Other}', false, true, null, null, 9),
-  ('current-meds', 'Medical Background', 'Are you currently taking any medications or supplements?', 'Include prenatal vitamins, prescriptions or herbal support.', 'text', null, false, true, null, null, 10),
-  ('allergies', 'Medical Background', 'Do you have any allergies (food or medicine)?', 'We will keep alerts safe for your sensitivities.', 'text', null, false, true, null, null, 11),
-  ('diet-style', 'Lifestyle & Nutrition', 'What kind of diet do you follow?', 'Helps us share recipes and nutrition reminders you will love.', 'single_select', '{Vegetarian,Non-vegetarian,Vegan,Other}', true, true, null, null, 12),
-  ('food-preferences', 'Lifestyle & Nutrition', 'Do you have any food restrictions or preferences?', 'Tell us about cultural staples, cravings or aversions.', 'text', null, false, true, null, null, 13),
-  ('activity-level', 'Lifestyle & Nutrition', 'How active are you during the week?', 'We will match movement tips to your pace.', 'single_select', '{Low,Moderate,High}', true, true, null, null, 14),
-  ('substance-use', 'Lifestyle & Nutrition', 'Do you smoke or drink alcohol?', 'No judgement—knowing this keeps our nudges supportive.', 'single_select', '{Never,Occasionally,Yes}', false, true, null, null, 15),
-  ('emotional-checkin', 'Mental Health', 'How are you feeling emotionally these days?', 'We will tune mental health support to your emotional check-in.', 'single_select', '{Happy,Stressed,Tired,Anxious}', true, true, null, null, 16),
-  ('has-doctor', 'Doctor & Appointment Info', 'Do you currently have a gynecologist or doctor you see regularly?', 'We can prompt appointment prep or questions to ask.', 'single_select', '{Yes,No}', true, false, null, null, 17),
-  ('next-appointment', 'Doctor & Appointment Info', 'When is your next prenatal appointment (if any)?', 'Add a date so we can schedule gentle reminders.', 'text', null, false, true, 'has-doctor', '{Yes}', 18),
-  ('emergency-contact', 'Emergency Info', 'Who should we contact in an emergency?', 'Name, relation and phone help us surface this quickly when needed.', 'text', null, false, true, null, null, 19),
-  ('blood-group', 'Emergency Info', 'What’s your blood group?', 'Critical information to have on hand in urgent moments.', 'single_select', '{A+,A-,B+,B-,AB+,AB-,O+,O-,Unsure}', false, true, null, null, 20)
+  ('pregnancy-status', 'Pregnancy Status', 'Are you currently pregnant or planning to get pregnant soon?', 'Choose what fits right now so timing stays on point.', 'single_select', '{No I want to be,Yes I am}', true, false, null, null, 4),
+  ('pregnancy-feeling', 'Pregnancy Status', 'How are you feeling?', 'Let us know how you are doing right now.', 'single_select', '{Excited and happy,A bit nervous,Overwhelmed,Tired but hopeful}', true, false, 'pregnancy-status', '{Yes I am}', 5),
+  ('folic-acid', 'Pregnancy Status', 'Are you taking folic acid?', 'Folic acid is important for your baby''s development.', 'single_select', '{Yes,No}', true, false, 'pregnancy-status', '{Yes I am}', 6),
+  ('due-date-known', 'Pregnancy Status', 'Do you know your due date?', 'This helps us provide week-by-week guidance.', 'single_select', '{Yes,No calculate it for me}', true, false, 'pregnancy-status', '{Yes I am}', 7),
+  ('pregnancy-weeks', 'Pregnancy Status', 'How many weeks pregnant are you?', 'We will sync week-by-week updates to this number.', 'text', null, true, false, 'pregnancy-status', '{Yes I am}', 8),
+  ('first-pregnancy', 'Pregnancy Status', 'Is this your first pregnancy?', 'This lets us tailor support for first-time or experienced mums.', 'single_select', '{Yes,No}', true, false, 'pregnancy-status', '{Yes I am}', 9),
+  ('pregnancy-complications', 'Pregnancy Status', 'Have you had any complications in this or previous pregnancies?', 'Share anything your care team is watching closely.', 'text', null, false, true, 'pregnancy-status', '{Yes I am}', 10),
+  ('conception-window', 'Pregnancy Status', 'When are you hoping to conceive?', 'We will time prep tips around your window.', 'text', null, true, false, 'pregnancy-status', '{No I want to be}', 11),
+  ('medical-conditions', 'Medical Background', 'Do you have any pre-existing medical conditions?', 'Think diabetes, hypertension, thyroid or anything else important.', 'multi_select', '{None,Diabetes,Hypertension,Thyroid,PCOS,Autoimmune condition,Other}', false, true, null, null, 12),
+  ('current-meds', 'Medical Background', 'Are you currently taking any medications or supplements?', 'Include prenatal vitamins, prescriptions or herbal support.', 'text', null, false, true, null, null, 13),
+  ('allergies', 'Medical Background', 'Do you have any allergies (food or medicine)?', 'We will keep alerts safe for your sensitivities.', 'text', null, false, true, null, null, 14),
+  ('diet-style', 'Lifestyle & Nutrition', 'What kind of diet do you follow?', 'Helps us share recipes and nutrition reminders you will love.', 'single_select', '{Vegetarian,Non-vegetarian,Other}', true, true, null, null, 15),
+  ('food-preferences', 'Lifestyle & Nutrition', 'Do you have any food restrictions or preferences?', 'Tell us about cultural staples, cravings or aversions.', 'text', null, false, true, null, null, 16),
+  ('activity-level', 'Lifestyle & Nutrition', 'How active are you during the week?', 'We will match movement tips to your pace.', 'single_select', '{Low,Moderate,High}', true, true, null, null, 17),
+  ('substance-use', 'Lifestyle & Nutrition', 'Do you smoke or drink alcohol?', 'No judgement—knowing this keeps our nudges supportive.', 'single_select', '{Never,Occasionally,Yes}', false, true, null, null, 18),
+  ('emotional-checkin', 'Mental Health', 'How are you feeling emotionally these days?', 'We will tune mental health support to your emotional check-in.', 'single_select', '{Happy,Stressed,Tired,Anxious}', true, true, null, null, 19),
+  ('has-doctor', 'Doctor & Appointment Info', 'Do you currently have a gynecologist or doctor you see regularly?', 'We can prompt appointment prep or questions to ask.', 'single_select', '{Yes,No}', true, false, null, null, 20),
+  ('next-appointment', 'Doctor & Appointment Info', 'When is your next prenatal appointment (if any)?', 'Add a date so we can schedule gentle reminders.', 'text', null, false, true, 'has-doctor', '{Yes}', 21),
+  ('emergency-contact', 'Emergency Info', 'Who should we contact in an emergency?', 'Name, relation and phone help us surface this quickly when needed.', 'text', null, false, true, null, null, 22),
+  ('blood-group', 'Emergency Info', 'What''s your blood group?', 'Critical information to have on hand in urgent moments.', 'single_select', '{A+,A-,B+,B-,AB+,AB-,O+,O-,Unsure}', false, true, null, null, 23)
   on conflict (slug) do nothing;
 
 -- Sample data helpers (callable after onboarding to personalise dashboard)

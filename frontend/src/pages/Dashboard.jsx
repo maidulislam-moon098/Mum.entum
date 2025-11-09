@@ -10,6 +10,8 @@ import CareInsights from '../components/CareInsights.jsx';
 import ActionItems from '../components/ActionItems.jsx';
 import ImportantNotifications from '../components/ImportantNotifications.jsx';
 import NotificationPermissionBanner from '../components/NotificationPermissionBanner.jsx';
+import DailyHealthCheck from '../components/DailyHealthCheck.jsx';
+import TreatmentRecommendations from '../components/TreatmentRecommendations.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const Dashboard = () => {
@@ -138,6 +140,26 @@ const Dashboard = () => {
             )}
           </motion.div>
         )}
+
+        {/* Daily Health Check */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.5 }}
+          style={{ marginBottom: '50px' }}
+        >
+          <DailyHealthCheck userId={user?.id} />
+        </motion.div>
+
+        {/* Treatment Recommendations */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.18, duration: 0.5 }}
+          style={{ marginBottom: '50px' }}
+        >
+          <TreatmentRecommendations userId={user?.id} />
+        </motion.div>
 
         {/* Action Items - Full Width */}
         <motion.div

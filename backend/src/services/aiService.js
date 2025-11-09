@@ -568,3 +568,94 @@ export const generateMoodSummary = async (profile, context = null) => {
     };
   }
 };
+
+/**
+ * Generate personalized insight articles for pregnancy and postpartum
+ */
+export const generateInsightArticle = async (userId, category, stage, profile) => {
+  try {
+    const week = profile?.current_week || profile?.weeks_pregnant || 20;
+    const dietStyle = profile?.diet_style || 'balanced';
+    const activityLevel = profile?.activity_level || 'moderate';
+
+    let categoryContext = '';
+    switch (category) {
+      case 'breastfeeding':
+        categoryContext = 'Breastfeeding tips, latch techniques, milk supply, common challenges and solutions';
+        break;
+      case 'baby-care':
+        categoryContext = 'Baby care basics, diapering, bathing, sleep schedules, developmental milestones';
+        break;
+      case 'recovery':
+        categoryContext = 'Postpartum recovery, physical healing, pelvic floor exercises, C-section care';
+        break;
+      case 'nutrition':
+        categoryContext = `Pregnancy nutrition for ${dietStyle} diet, meal planning, key nutrients`;
+        break;
+      case 'mental-health':
+        categoryContext = 'Mental wellness, stress management, postpartum mood, emotional support';
+        break;
+      case 'sleep':
+        categoryContext = 'Sleep patterns, baby sleep training, maternal rest, sleep deprivation coping';
+        break;
+      default:
+        categoryContext = 'General pregnancy and postpartum wellness';
+    }
+
+    const stageContext = stage === 'postpartum' 
+      ? 'New mother caring for newborn baby'
+      : `Pregnant at week ${week}`;
+
+    const prompt = `Write a comprehensive, evidence-based article about ${categoryContext} for a ${stageContext}.
+
+    User context:
+    - Stage: ${stage}
+    ${stage === 'pregnancy' ? `- Current week: ${week}` : ''}
+    - Diet: ${dietStyle}
+    - Activity level: ${activityLevel}
+
+    Create an article that is:
+    - Warm, supportive and encouraging
+    - Evidence-based with practical tips
+    - Personalized to their stage and preferences
+    - 400-600 words
+    - Includes specific actionable advice
+
+    Format as JSON:
+    {
+      "title": "engaging article title",
+      "summary": "2-3 sentence overview",
+      "content": "full article content with paragraphs separated by newlines",
+      "tags": ["tag1", "tag2", "tag3"]
+    }`;
+
+    const completion = await client.chat.completions.create({
+      model: MODEL,
+      messages: [
+        { role: 'system', content: 'You are an expert maternal health educator. Write helpful, accurate, supportive articles. Return only valid JSON.' },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 1500
+    });
+
+    const content = completion.choices[0]?.message?.content?.trim();
+    if (!content) throw new Error('Empty AI response');
+
+    // Extract JSON from response
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON found in response');
+
+    return JSON.parse(jsonMatch[0]);
+  } catch (error) {
+    console.error('Article generation error:', error);
+    // Return fallback article
+    return {
+      title: `Understanding ${category.replace('-', ' ')}`,
+      summary: `Essential guidance for ${stage === 'postpartum' ? 'new mothers' : 'pregnancy'}.`,
+      content: `This is an important topic in your journey. We recommend consulting with your healthcare provider for personalized advice tailored to your specific situation.`,
+      tags: [category, stage]
+    };
+  }
+};
+
