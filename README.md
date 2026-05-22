@@ -6,7 +6,7 @@ Mum.entum is a supportive web experience for pregnant women featuring a gentle o
 
 ```
 backend/            # Express API
-frontend/           # React app (Vite)
+frontend/           # React app (Vite) 
 supabase/schema.sql # Database objects and seed content
 ```
 
